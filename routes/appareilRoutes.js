@@ -1,15 +1,18 @@
 const express = require("express");
-const router = express.Router();
-const controller = require("../controllers/appareilController");
-const auth = require("../middleware/auth");
+const router  = express.Router();
+const ctrl    = require("../controllers/appareilController");
+const auth    = require("../middleware/auth");
+const active  = require("../middleware/active");
+const role    = require("../middleware/role");
 
-router.post("/",auth, controller.create);
-router.get("/", auth,controller.getAll);
-router.get("/:id", auth,controller.getOne);
-router.get("/client/:clientId", auth,controller.getByClient );
+const READ_ROLES  = ["reception", "responsable_reparation", "technicien"];
+const WRITE_ROLES = ["reception"];
 
-router.put("/:id",auth, controller.update);
-router.delete("/:id",auth, controller.delete);
-
+router.get("/",                  auth, active, role(READ_ROLES),  ctrl.getAll);
+router.get("/client/:clientId",  auth, active, role(READ_ROLES),  ctrl.getByClient);
+router.get("/:id",               auth, active, role(READ_ROLES),  ctrl.getOne);
+router.post("/",                 auth, active, role(WRITE_ROLES), ctrl.create);
+router.put("/:id",               auth, active, role(WRITE_ROLES), ctrl.update);
+router.delete("/:id",            auth, active, role(WRITE_ROLES), ctrl.delete);
 
 module.exports = router;

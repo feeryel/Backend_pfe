@@ -16,9 +16,20 @@ const Client = sequelize.define("Client", {
     unique: true,
   },
   email: {
-  type: DataTypes.STRING,
-  allowNull: false
-}
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    unique: true,
+    references: {
+      model: "utilisateurs",
+      key: "id"
+    },
+    onDelete: "SET NULL",
+    onUpdate: "CASCADE"
+  }
 }, {
   tableName: "clients",
   timestamps: true

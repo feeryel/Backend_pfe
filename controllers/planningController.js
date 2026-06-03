@@ -2,18 +2,22 @@ const { Planning, Demande, User } = require("../models");
 
 exports.create = async (req, res) => {
   try {
+    // ✅ Accepte demandeId (MCP) OU DemandeReparationId (frontend Angular)
+    const demandeRef = req.body.demandeId || req.body.DemandeReparationId;
+
     const data = await Planning.create({
-      dateDebut: req.body.dateDebut,
-      dateFin: req.body.dateFin,
-      DemandeReparationId: req.body.demandeId, // ✅ FIX هنا
-      responsableId: req.body.responsableId
+      dateDebut:             req.body.dateDebut,
+      dateFin:               req.body.dateFin,
+      DemandeReparationId:   demandeRef,
+      responsableId:         req.body.responsableId
     });
 
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    res.status(500).json({ message: err.message, error: err });
   }
 };
+
 exports.getOne = async (req, res) => {
   try {
     const data = await Planning.findByPk(req.params.id, {
@@ -29,21 +33,23 @@ exports.getOne = async (req, res) => {
 
     res.json(data);
   } catch (err) {
-    res.status(500).json({
-      message: "Server error",
-      error: err.message
-    });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
-exports.getAll = async (req, res) => {
-  const data = await Planning.findAll({
-    include: [
-      Demande,
-      { model: User, as: "responsable" }
-    ]
-  });
 
-  res.json(data);
+exports.getAll = async (req, res) => {
+  try {
+    const data = await Planning.findAll({
+      include: [
+        Demande,
+        { model: User, as: "responsable" }
+      ]
+    });
+
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 exports.update = async (req, res) => {
@@ -51,17 +57,20 @@ exports.update = async (req, res) => {
     const data = await Planning.findByPk(req.params.id);
     if (!data) return res.status(404).json({ message: "Not found" });
 
-await data.update({
-  dateDebut: req.body.dateDebut,
-  dateFin: req.body.dateFin,
-  DemandeReparationId: req.body.demandeId, // ✅ FIX
-  responsableId: req.body.responsableId
-});    res.json(data);
+    // ✅ Accepte demandeId (MCP) OU DemandeReparationId (frontend Angular)
+    const demandeRef = req.body.demandeId || req.body.DemandeReparationId;
+
+    await data.update({
+      dateDebut:           req.body.dateDebut,
+      dateFin:             req.body.dateFin,
+      DemandeReparationId: demandeRef,
+      responsableId:       req.body.responsableId
+    });
+
+    res.json(data);
   } catch (err) {
-res.status(500).json({
-  message: err.message,
-  error: err
-});  }
+    res.status(500).json({ message: err.message, error: err });
+  }
 };
 
 exports.delete = async (req, res) => {

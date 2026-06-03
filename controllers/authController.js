@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const { User, Client } = require("../models");
 
 exports.register = async (req, res) => {
   const { login, motDePasse, role } = req.body;
@@ -21,16 +21,32 @@ exports.login = async (req, res) => {
 
   const user = await User.findOne({ where: { login } });
 
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) return res.status(401).json({ message: "Identifiants incorrects" });
 
   const match = await bcrypt.compare(motDePasse, user.motDePasse);
+  if (!match) return res.status(401).json({ message: "Identifiants incorrects" });
 
-  if (!match) return res.status(401).json({ message: "Wrong password" });
+  if (user.bannit) return res.status(403).json({ message: "Compte banni" });
+  if (!user.actif)  return res.status(403).json({ message: "Compte désactivé" });
 
-  const token = jwt.sign({ id: user.id, role: user.role }, "secretkey");
+  const tokenPayload = { id: user.id, role: user.role };
+  const response = {
+    token:  null,
+    role:   user.role,
+    userId: user.id,
+    login:  user.login
+  };
 
-res.json({
-  token,
-  role: user.role
-});
+  if (user.role === "client") {
+    const clientProfile = await Client.findOne({ where: { userId: user.id } });
+ if (clientProfile) {
+      tokenPayload.clientId = clientProfile.id;
+      response.clientId = clientProfile.id;
+      response.clientName = clientProfile.nom;
+    }
+  }
+
+  response.token = jwt.sign(tokenPayload, process.env.JWT_SECRET || "secretkey");
+
+  res.json(response);
 };

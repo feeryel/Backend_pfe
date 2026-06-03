@@ -1,35 +1,50 @@
-const { Client, Appareil } = require("../models");
-const { Op, fn, col, where } = require("sequelize");
+const { Client, Appareil, User } = require("../models");
+const { Op } = require("sequelize");
+const sequelize = require("../config/database");
+const bcrypt = require("bcrypt");
 
 const normalize = (str = "") =>
-  str
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
+  str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
 exports.create = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
-    console.log("Données reçues pour création:", req.body);
+    const { nom, adresse, numTel, email } = req.body;
 
-    // Création du client
-    const client = await Client.create(req.body);
+    // Le login = email, mot de passe par défaut = numTel (à changer après)
+    const existingUser = await User.findOne({ where: { login: email }, transaction: t });
+    if (existingUser) {
+      await t.rollback();
+      return res.status(400).json({ error: "Un compte utilisateur avec cet email existe déjà." });
+    }
 
+    const hashed = await bcrypt.hash(numTel, 10);
+    const user = await User.create(
+      { login: email, motDePasse: hashed, role: "client" },
+      { transaction: t }
+    );
+
+    const client = await Client.create(
+      { nom, adresse, numTel, email, userId: user.id },
+      { transaction: t }
+    );
+
+    await t.commit();
     res.status(201).json({
       message: "Client créé avec succès",
-      data: client
+      data: {
+        client,
+        user: { id: user.id, login: user.login, role: user.role }
+      }
     });
   } catch (error) {
-    console.error("Erreur lors de la création du client:", error);
-
-    // Gestion d’erreurs plus précise
+    await t.rollback();
     if (error.name === "SequelizeUniqueConstraintError") {
-      return res.status(400).json({ error: "Le numéro de téléphone existe déjà." });
+      return res.status(400).json({ error: "Le numéro de téléphone ou l’email existe déjà." });
     }
     if (error.name === "SequelizeValidationError") {
       return res.status(400).json({ error: error.errors.map(e => e.message) });
     }
-
     res.status(500).json({ error: "Erreur serveur" });
   }
 };

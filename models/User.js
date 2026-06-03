@@ -18,12 +18,23 @@ const User = sequelize.define("User", {
   role: {
     type: DataTypes.ENUM(
       "admin",
+      "client",
       "technicien",
       "reception",
       "responsable_reparation",
       "achat_stock"
     ),
     allowNull: false
+  },
+  actif: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  bannit: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
   }
 }, {
   tableName: "utilisateurs",

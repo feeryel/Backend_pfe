@@ -1,0 +1,96 @@
+{
+  "name": "TechDoctor — Notification Réparation DONE",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reparation-done",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-1-webhook",
+      "name": "Webhook Réparation DONE",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [200, 300],
+      "webhookId": "techdoctor-reparation-done"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-event",
+              "leftValue":  "={{ $json.body.event }}",
+              "rightValue": "reparation.done",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-2-if",
+      "name": "Vérifier event",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "ferydadi796@gmail.com",
+        "toEmail":   "={{ $json.body.clientEmail }}",
+        "subject":   "=✅ Votre réparation est prête — TechDoctor",
+        "emailType": "html",
+        "html":      "=<!DOCTYPE html><html lang=\"fr\"><head><meta charset=\"utf-8\"><title>TechDoctor</title></head><body style=\"margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\" style=\"padding:40px 16px;\"><table width=\"560\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12);\"><tr><td style=\"background:linear-gradient(135deg,#1d4ed8,#3b82f6);padding:36px;text-align:center;\"><h1 style=\"color:#fff;margin:0;font-size:28px;font-weight:800;\">🔧 TechDoctor</h1><p style=\"color:rgba(255,255,255,.80);margin:6px 0 0;font-size:13px;\">ATELIER DE RÉPARATION</p></td></tr><tr><td align=\"center\" style=\"padding:28px 32px 0;\"><span style=\"background:#d1fae5;border:2px solid #6ee7b7;border-radius:50px;padding:8px 24px;color:#065f46;font-weight:700;font-size:15px;\">✅ Réparation terminée</span></td></tr><tr><td style=\"padding:24px 32px 0;\"><p style=\"color:#1e293b;font-size:16px;margin:0 0 10px;\">Bonjour <strong>{{ $json.body.clientNom }}</strong>,</p><p style=\"color:#475569;font-size:14px;line-height:1.7;margin:0 0 20px;\">Votre appareil est réparé et <strong>prêt à être récupéré</strong> à notre atelier.</p><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;margin-bottom:20px;\"><tr><td style=\"padding:20px;\"><p style=\"color:#166534;font-size:14px;margin:0 0 8px;\">📦 <strong>Appareil :</strong> {{ $json.body.appareil }}</p><p style=\"color:#166534;font-size:14px;margin:0 0 8px;border-top:1px solid #bbf7d0;padding-top:8px;\">📅 <strong>Date de fin :</strong> {{ $json.body.dateFinRep }}</p><p style=\"color:#166534;font-size:14px;margin:0;border-top:1px solid #bbf7d0;padding-top:8px;\">🔢 <strong>Référence :</strong> #{{ $json.body.reparationId }}</p></td></tr></table><p style=\"color:#64748b;font-size:13px;border-left:3px solid #3b82f6;padding-left:10px;margin:0 0 24px;\">Pensez à présenter cet email lors de la récupération.</p></td></tr><tr><td style=\"background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;\"><p style=\"color:#94a3b8;font-size:11px;margin:0;\">Email automatique — ne pas répondre · © 2025 TechDoctor</p></td></tr></table></td></tr></table></body></html>",
+        "options": {}
+      },
+      "id": "node-3-email",
+      "name": "Email au Client",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [640, 160]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "assign-1", "name": "status", "value": "ignored", "type": "string" },
+            { "id": "assign-2", "name": "reason", "value": "event != reparation.done", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-4-ignore",
+      "name": "Ignorer",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [640, 440]
+    }
+  ],
+  "connections": {
+    "Webhook Réparation DONE": {
+      "main": [
+        [{ "node": "Vérifier event", "type": "main", "index": 0 }]
+      ]
+    },
+    "Vérifier event": {
+      "main": [
+        [{ "node": "Email au Client", "type": "main", "index": 0 }],
+        [{ "node": "Ignorer",         "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "staticData": null,
+  "tags": [{ "name": "TechDoctor" }]
+}

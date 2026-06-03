@@ -51,6 +51,10 @@ Facture.belongsTo(Reparation, {
 });
 // ================= USERS =================
 
+// Client a un compte utilisateur (OneToOne)
+User.hasOne(Client, { foreignKey: "userId", as: "clientProfile" });
+Client.belongsTo(User, { foreignKey: "userId", as: "user" });
+
 // Technicien yaamel réparation
 User.hasMany(Reparation, { foreignKey: "technicienId" });
 Reparation.belongsTo(User, { as: "technicien", foreignKey: "technicienId" });

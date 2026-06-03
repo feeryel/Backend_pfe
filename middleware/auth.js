@@ -10,8 +10,8 @@ module.exports = (req, res, next) => {
   const token = header.split(" ")[1]; // Bearer TOKEN
 
   try {
-    const decoded = jwt.verify(token, "secretkey");
-    req.user = decoded; // نخزن user في request
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secretkey");
+    req.user = decoded;
     next();
   } catch (err) {
     return res.status(401).json({ message: "Token invalide" });
