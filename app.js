@@ -12,6 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 /* Routes */
+app.use("/admin",            require("./routes/adminRoutes"));
 app.use("/clients",          require("./routes/clientRoutes"));
 app.use("/appareils",        require("./routes/appareilRoutes"));
 app.use("/demandes",         require("./routes/demandeRoutes"));

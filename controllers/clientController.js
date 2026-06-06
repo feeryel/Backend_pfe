@@ -2,6 +2,8 @@ const { Client, Appareil, User } = require("../models");
 const { Op } = require("sequelize");
 const sequelize = require("../config/database");
 const bcrypt = require("bcrypt");
+const mailQueue = require("../services/mailQueue");
+const mailService = require("../services/mailService");
 
 const normalize = (str = "") =>
   str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -30,6 +32,16 @@ exports.create = async (req, res) => {
     );
 
     await t.commit();
+
+    // Envoi email credentials au client (après commit, hors transaction)
+    try {
+      mailQueue.addMailJob({ type: 'client', to: email, login: email, motDePasse: numTel, nom });
+    } catch (mailErr) {
+      // Fallback direct si la queue échoue — ne bloque pas la réponse
+      mailService.sendClientCreatedEmail({ to: email, login: email, motDePasse: numTel, nom })
+        .catch(e => console.error('[mail-client] Envoi échoué pour', email, e.message));
+    }
+
     res.status(201).json({
       message: "Client créé avec succès",
       data: {

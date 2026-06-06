@@ -1,5 +1,6 @@
 const { Reparation, Demande, LigneReparation, Piece, Facture, User, Appareil, Client } = require("../models");
 const { notifyReparationDone } = require("../services/webhookService");
+const { addMailJob } = require("../services/mailQueue");
 
 exports.create = async (req, res) => {
   try {
@@ -136,7 +137,10 @@ exports.update = async (req, res) => {
 exports.updateStatus = async (req, res) => {
   try {
     const rep = await Reparation.findByPk(req.params.id);
-    if (!rep) return res.status(404).json({ message: "Reparation not found" });
+
+    if (!rep) {
+      return res.status(404).json({ message: "Reparation not found" });
+    }
 
     const previousStatus = rep.status;
     rep.status = req.body.status;
@@ -144,39 +148,86 @@ exports.updateStatus = async (req, res) => {
 
     res.json({ message: "Status updated", status: rep.status });
 
-    // Notification n8n — déclenchée APRÈS la réponse pour ne pas bloquer le client
-    if (rep.status === "DONE" && previousStatus !== "DONE") {
-      try {
-        const full = await Reparation.findByPk(rep.id, {
-          include: [{
-            model: Demande,
-            include: [{
+if (rep.status === "DONE" && previousStatus !== "DONE") {
+  console.log("[STATUS] DONE → webhook start");
+
+  try {
+    const full = await Reparation.findByPk(rep.id, {
+      include: [
+        {
+          model: Demande,
+          include: [
+            {
               model: Appareil,
-              include: [Client]
-            }]
-          }]
-        });
-
-        const client  = full?.Demande?.Appareil?.Client;
-        const appareil = full?.Demande?.Appareil;
-
-        if (client) {
-          notifyReparationDone({
-            reparationId: rep.id,
-            clientId:     client.id,
-            clientNom:    client.nom,
-            clientEmail:  client.email,
-            clientTel:    client.numTel,
-            appareil:     `${appareil?.marque ?? ''} ${appareil?.modele ?? ''}`.trim(),
-            dateFinRep:   rep.dateFinRep ?? new Date().toISOString()
-          }).catch(() => {});
+              include: [
+                {
+                  model: Client,
+                  include: [{ model: User, as: "user" }]
+                }
+              ]
+            }
+          ]
         }
-      } catch (notifErr) {
-        console.error("[notification] Erreur récupération données client :", notifErr.message);
-      }
+      ]
+    });
+
+    console.log("FULL RAW =", JSON.stringify(full, null, 2));
+
+    // 🔥 IMPORTANT FIX ICI
+    const demande = full?.DemandeReparation;
+    const appareil = demande?.Appareil;
+    const client = appareil?.Client;
+    const user = client?.user;
+
+    console.log("[DEBUG DEMANDE]", demande);
+    console.log("[DEBUG APPAREIL]", appareil);
+    console.log("[DEBUG CLIENT]", client);
+    console.log("[DEBUG USER]", user);
+
+    if (!client) {
+      console.warn("[WEBHOOK] Client not found");
+      return;
+    }
+
+    const email = client.email || user?.login;
+
+    if (!email) {
+      console.warn("[WEBHOOK] Email missing");
+      return;
+    }
+
+    const payload = {
+      reparationId: rep.id,
+      clientId: client.id,
+      clientNom: client.nom,
+      clientEmail: email,
+      clientTel: client.numTel,
+      appareil: `${appareil?.marque ?? ""} ${appareil?.modele ?? ""}`.trim(),
+      dateFinRep: rep.dateFinRep ?? new Date().toISOString()
+    };
+
+    console.log("[WEBHOOK PAYLOAD]", payload);
+
+    notifyReparationDone(payload)
+      .then(() => console.log("[WEBHOOK SENT ✔]"))
+      .catch(err => console.error("[WEBHOOK ERROR]", err));
+
+    if (email) {
+      addMailJob({
+        type: "reparation_done",
+        to: email,
+        nom: client.nom,
+        appareil: payload.appareil,
+        reparationId: rep.id
+      });
     }
 
   } catch (err) {
+    console.error("[WEBHOOK ERROR]", err);
+  }
+}
+  } catch (err) {
+    console.error(err);
     res.status(500).json(err);
   }
 };
