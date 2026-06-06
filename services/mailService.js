@@ -164,13 +164,7 @@ exports.sendReparationDoneEmail = async ({ to, nom, appareil, reparationId }) =>
           Il est désormais <strong>prêt à être récupéré</strong> à notre atelier.
         </p>
 
-        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
-          <p style="margin:0 0 8px;font-weight:700;color:#15803d;font-size:13px;text-transform:uppercase;letter-spacing:.5px;">Réparation #${reparationId}</p>
-          <p style="margin:0;font-size:14px;color:#166534;">
-            Statut : <strong>Réparation terminée</strong>
-          </p>
-        </div>
-
+    
         <p style="margin:0 0 20px;color:#374151;">
           Vous pouvez consulter vos réparations et vos factures depuis votre espace client en ligne.
         </p>

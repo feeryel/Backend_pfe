@@ -1,7 +1,7 @@
 const { Reparation, Demande, LigneReparation, Piece, Facture, User, Appareil, Client } = require("../models");
 const { notifyReparationDone } = require("../services/webhookService");
 const { addMailJob } = require("../services/mailQueue");
-
+const { sendWhatsAppMessage } = require("../services/whatsappService");
 exports.create = async (req, res) => {
   try {
     const data = await Reparation.create({
@@ -221,6 +221,24 @@ if (rep.status === "DONE" && previousStatus !== "DONE") {
         reparationId: rep.id
       });
     }
+ if (client.numTel) {
+
+  const cleanNumber = client.numTel.replace(/\D/g, "");
+  const jid = cleanNumber + "@s.whatsapp.net";
+
+  const msg =
+  `🔧 TechDoctor\n\n` +
+  `📱 Votre appareil : ${payload.appareil}\n` +
+  `✅ Statut : Réparation terminée\n\n` +
+  `🧾 Référence réparation : ${rep.id}\n` +
+  `📅 Merci de vous présenter pour récupérer votre appareil\n\n` +
+  `🙏 Merci pour votre confiance\n` +
+  `— TechDoctor`;
+
+  sendWhatsAppMessage(jid, msg)
+    .then(() => console.log("[WA SENT ✔]"))
+    .catch(err => console.error("[WA ERROR]", err));
+}
 
   } catch (err) {
     console.error("[WEBHOOK ERROR]", err);

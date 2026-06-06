@@ -7,6 +7,7 @@ require("./models"); // important pour charger les relations
 const errorMiddleware = require("./middleware/error");
 
 const app = express();
+const { initWhatsApp, startWA } = require("./services/whatsappService");
 
 app.use(cors());
 app.use(express.json());
@@ -30,6 +31,7 @@ app.use("/public/garantie",  require("./routes/garantieRoutes"));
 app.get("/", (req, res) => {
   res.send("Backend PFE Running 🚀");
 });
+startWA();
 
 /* ✅ Middleware de gestion d'erreurs — doit être APRÈS les routes et AVANT listen */
 app.use(errorMiddleware);
