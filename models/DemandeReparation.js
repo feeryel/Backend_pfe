@@ -10,10 +10,10 @@ const DemandeReparation = sequelize.define("DemandeReparation", {
   datePrevueRep: DataTypes.DATE,
   symptomesPanne: DataTypes.TEXT,
   etat: {
-    type: DataTypes.STRING,
+    type: DataTypes.ENUM("En attente", "En cours", "Terminée"),
+    allowNull: false,
     defaultValue: "En attente"
-  },
-  idEtiquette: DataTypes.INTEGER
+  }
 }, {
   tableName: "demandes_reparation" // force tableName
 });

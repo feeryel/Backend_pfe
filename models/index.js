@@ -71,6 +71,10 @@ Reparation.belongsTo(User, { as: "technicien", foreignKey: "technicienId" });
 User.hasMany(Planning, { foreignKey: "responsableId" });
 Planning.belongsTo(User, { as: "responsable", foreignKey: "responsableId" });
 
+// Technicien assigné au planning
+User.hasMany(Planning, { foreignKey: "technicienId", as: "planningsTechnicien" });
+Planning.belongsTo(User, { as: "technicien", foreignKey: "technicienId" });
+
 // Demande → Planning (optionnel)
 Demande.hasOne(Planning, {
   foreignKey: "DemandeReparationId"

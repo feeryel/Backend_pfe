@@ -10,6 +10,14 @@ exports.create = async (req, res) => {
       technicienId: req.body.technicienId
     });
 
+    // La demande passe en "En cours" dès qu'une réparation lui est associée
+    if (data.demandeId) {
+      await Demande.update(
+        { etat: "En cours" },
+        { where: { id: data.demandeId, etat: "En attente" } }
+      );
+    }
+
     res.status(201).json(data);
   } catch (err) {
     res.status(500).json(err);
@@ -146,6 +154,14 @@ exports.updateStatus = async (req, res) => {
     rep.status = req.body.status;
     await rep.save();
 
+    // Synchronise l'état de la demande liée avec l'avancement de la réparation
+    if (rep.demandeId) {
+      await Demande.update(
+        { etat: rep.status === "DONE" ? "Terminée" : "En cours" },
+        { where: { id: rep.demandeId } }
+      );
+    }
+
     res.json({ message: "Status updated", status: rep.status });
 
 if (rep.status === "DONE" && previousStatus !== "DONE") {
@@ -230,7 +246,7 @@ if (rep.status === "DONE" && previousStatus !== "DONE") {
   `🔧 TechDoctor\n\n` +
   `📱 Votre appareil : ${payload.appareil}\n` +
   `✅ Statut : Réparation terminée\n\n` +
-  `🧾 Référence réparation : ${rep.id}\n` +
+  `🧾 Référence réparation : #${rep.id}\n` +
   `📅 Merci de vous présenter pour récupérer votre appareil\n\n` +
   `🙏 Merci pour votre confiance\n` +
   `— TechDoctor`;

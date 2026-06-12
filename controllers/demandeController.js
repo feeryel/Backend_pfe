@@ -1,5 +1,5 @@
 const { Demande, Appareil, Planning } = require("../models");
-
+const axios = require("axios");
 // CREATE
 exports.create = async (req, res) => {
   try {
@@ -8,16 +8,18 @@ exports.create = async (req, res) => {
       datePrevueRep,
       symptomesPanne,
       etat,
-      idEtiquette,
       appareilId
     } = req.body;
+
+    if (datePrevueRep && new Date(datePrevueRep) < new Date(dateDepot || Date.now())) {
+      return res.status(400).json({ message: "La date prévue ne peut pas être avant la date de dépôt" });
+    }
 
     const data = await Demande.create({
       dateDepot: dateDepot || new Date(),
       datePrevueRep,
       symptomesPanne,
       etat: etat || "En attente",
-      idEtiquette,
       AppareilId: appareilId
     });
 
@@ -31,6 +33,26 @@ exports.create = async (req, res) => {
   }
 };
 
+exports.predictDate = async (req, res) => {
+  try {
+    const { symptomesPanne } = req.body;
+
+    const response = await axios.post(
+      process.env.N8N_WEBHOOK_URL,
+      { symptomesPanne }
+    );
+
+    return res.json(response.data);
+
+  } catch (err) {
+    console.log("N8N ERROR:", err?.response?.data || err.message);
+
+    return res.status(500).json({
+      message: "Prediction error",
+      error: err?.response?.data || err.message
+    });
+  }
+};
 // GET ALL
 exports.getAll = async (req, res) => {
   try {
@@ -86,16 +108,18 @@ exports.update = async (req, res) => {
       datePrevueRep,
       symptomesPanne,
       etat,
-      idEtiquette,
       appareilId
     } = req.body;
+
+    if (datePrevueRep && new Date(datePrevueRep) < new Date(dateDepot || data.dateDepot)) {
+      return res.status(400).json({ message: "La date prévue ne peut pas être avant la date de dépôt" });
+    }
 
     await data.update({
       dateDepot,
       datePrevueRep,
       symptomesPanne,
       etat,
-      idEtiquette,
       AppareilId: appareilId
     });
 

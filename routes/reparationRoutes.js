@@ -23,8 +23,8 @@ router.get("/:id/price",           auth, active, role(TECH_REC_REP),  ctrl.getPr
 router.get("/:id/status",          auth, active, role(TECH_REC_REP),  ctrl.getStatus);
 router.get("/:id",                 auth, active, role(TECH_REC_REP),  ctrl.getOne);
 
-// Création (réception uniquement)
-router.post("/",                   auth, active, role(["reception"]), ctrl.create);
+// Création (reparation uniquement)
+router.post("/",                   auth, active, role(["responsable_reparation"]), ctrl.create);
 
 // Mise à jour générale
 router.put("/:id",                 auth, active, role(RECEPTION_REP), ctrl.update);

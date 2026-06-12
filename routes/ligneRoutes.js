@@ -5,7 +5,7 @@ const auth    = require("../middleware/auth");
 const active  = require("../middleware/active");
 const role    = require("../middleware/role");
 
-const READ_ROLES  = ["technicien", "responsable_reparation", "reception"];
+const READ_ROLES  = ["technicien", "responsable_reparation", "reception", "achat_stock"];
 const WRITE_ROLES = ["technicien"];
 
 router.get("/",                             auth, active, role(READ_ROLES),  ctrl.getAll);
