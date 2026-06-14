@@ -1,5 +1,6 @@
 const { Demande, Appareil, Planning } = require("../models");
 const axios = require("axios");
+const auditService = require("../services/auditService");
 // CREATE
 exports.create = async (req, res) => {
   try {
@@ -21,6 +22,15 @@ exports.create = async (req, res) => {
       symptomesPanne,
       etat: etat || "En attente",
       AppareilId: appareilId
+    });
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "CREATE",
+      entity: "Demande",
+      entityId: data.id,
+      details: { symptomesPanne: data.symptomesPanne, etat: data.etat }
     });
 
     res.status(201).json(data);
@@ -123,6 +133,15 @@ exports.update = async (req, res) => {
       AppareilId: appareilId
     });
 
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "UPDATE",
+      entity: "Demande",
+      entityId: data.id,
+      details: { symptomesPanne: data.symptomesPanne, etat: data.etat }
+    });
+
     res.json(data);
   } catch (err) {
     console.error("UPDATE DEMANDE ERROR:", err);
@@ -140,6 +159,14 @@ exports.delete = async (req, res) => {
     }
 
     await data.destroy();
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "DELETE",
+      entity: "Demande",
+      entityId: req.params.id
+    });
 
     res.json({ message: "Supprimée avec succès" });
   } catch (err) {

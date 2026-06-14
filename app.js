@@ -26,6 +26,10 @@ app.use("/users",            require("./routes/userRoutes"));
 app.use("/mail",             require("./routes/mailRoutes"));
 app.use("/lignereparations", require("./routes/ligneRoutes"));
 app.use("/public/garantie",  require("./routes/garantieRoutes"));
+app.use("/notifications",    require("./routes/notificationRoutes"));
+app.use("/admin/audit-logs", require("./routes/auditLogRoutes"));
+app.use("/devis",            require("./routes/devisRoutes"));
+app.use("/public/devis",     require("./routes/publicDevisRoutes"));
 
 /* Test route */
 app.get("/", (req, res) => {

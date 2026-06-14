@@ -29,7 +29,7 @@ exports.login = async (req, res) => {
   if (user.bannit) return res.status(403).json({ message: "Compte banni" });
   if (!user.actif)  return res.status(403).json({ message: "Compte désactivé" });
 
-  const tokenPayload = { id: user.id, role: user.role };
+  const tokenPayload = { id: user.id, role: user.role, login: user.login };
   const response = {
     token:  null,
     role:   user.role,

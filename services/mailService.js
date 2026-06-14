@@ -111,11 +111,7 @@ exports.sendClientCreatedEmail = async ({ to, login, motDePasse, nom }) => {
           </table>
         </div>
 
-        <div style="text-align:center;margin-bottom:24px;">
-          <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;text-decoration:none;border-radius:10px;padding:12px 28px;font-weight:700;font-size:15px;">
-            Se connecter →
-          </a>
-        </div>
+
 
         <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:13px;color:#92400e;margin-bottom:16px;">
           <strong>⚠️ Conseil de sécurité :</strong> Changez votre mot de passe après votre première connexion.
@@ -191,6 +187,66 @@ exports.sendReparationDoneEmail = async ({ to, nom, appareil, reparationId }) =>
     from: fromAddress,
     to,
     subject: 'Votre appareil est prêt à être récupéré – TechDoctor',
+    text,
+    html
+  });
+};
+
+exports.sendDevisEmail = async ({ to, nom, numero, montantTotal, lien }) => {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    throw new Error('SMTP non configuré.');
+  }
+
+  const montant = Number(montantTotal || 0).toFixed(2);
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1f2937;">
+      <div style="background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:14px 14px 0 0;padding:32px 28px;">
+        <h1 style="color:#fff;margin:0;font-size:22px;">Devis de réparation</h1>
+        <p style="color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px;">TechDoctor — Validation requise</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:0 0 14px 14px;padding:28px;">
+        <p style="margin:0 0 16px;">Bonjour <strong>${nom}</strong>,</p>
+        <p style="margin:0 0 20px;color:#374151;">
+          Un devis a été établi pour la réparation de votre appareil.
+          Votre validation est nécessaire avant la poursuite des travaux.
+        </p>
+
+        <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+          <table style="width:100%;border-collapse:collapse;font-size:14px;">
+            <tr>
+              <td style="padding:6px 0;color:#6b7280;width:160px;">Référence</td>
+              <td style="padding:6px 0;font-weight:600;color:#1e1b4b;">${numero}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#6b7280;">Montant total</td>
+              <td style="padding:6px 0;font-weight:600;color:#1e1b4b;">${montant} TND</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align:center;margin-bottom:24px;">
+          <a href="${lien}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;text-decoration:none;border-radius:10px;padding:12px 28px;font-weight:700;font-size:15px;">
+            Consulter le devis →
+          </a>
+        </div>
+
+        <p style="font-size:12px;color:#9ca3af;margin:0;">
+          Ce lien vous permet d'accepter ou de refuser le devis sans connexion.
+        </p>
+      </div>
+      <p style="text-align:center;font-size:11px;color:#d1d5db;margin-top:16px;">
+        TechDoctor — Service de réparation
+      </p>
+    </div>
+  `;
+
+  const text = `Bonjour ${nom},\n\nUn devis de réparation (${numero}) est disponible pour validation.\n\nMontant total : ${montant} TND\n\nConsultez et répondez ici : ${lien}\n\nCordialement,\nL'équipe TechDoctor`;
+
+  await transporter.sendMail({
+    from: fromAddress,
+    to,
+    subject: `Devis de réparation ${numero} — Validation requise`,
     text,
     html
   });

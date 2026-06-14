@@ -4,6 +4,7 @@ const sequelize = require("../config/database");
 const bcrypt = require("bcrypt");
 const mailQueue = require("../services/mailQueue");
 const mailService = require("../services/mailService");
+const auditService = require("../services/auditService");
 
 const normalize = (str = "") =>
   str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -41,6 +42,15 @@ exports.create = async (req, res) => {
       mailService.sendClientCreatedEmail({ to: email, login: email, motDePasse: numTel, nom })
         .catch(e => console.error('[mail-client] Envoi échoué pour', email, e.message));
     }
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "CREATE",
+      entity: "Client",
+      entityId: client.id,
+      details: { nom: client.nom, email: client.email }
+    });
 
     res.status(201).json({
       message: "Client créé avec succès",
@@ -123,6 +133,16 @@ exports.update = async (req, res) => {
   try {
     const [updated] = await Client.update(req.body, { where: { id: req.params.id } });
     if (!updated) return res.status(404).json({ error: "Client non trouvé" });
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "UPDATE",
+      entity: "Client",
+      entityId: req.params.id,
+      details: req.body
+    });
+
     res.json({ message: "Client mis à jour" });
   } catch (error) {
     console.error(error);
@@ -143,6 +163,14 @@ exports.delete = async (req, res) => {
 
     if (!deleted)
       return res.status(404).json({ error: "Client non trouvé" });
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "DELETE",
+      entity: "Client",
+      entityId: req.params.id
+    });
 
     res.json({ message: "Client supprimé" });
 

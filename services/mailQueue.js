@@ -21,12 +21,14 @@ async function processNext() {
   processing = true;
   while (queue.length > 0) {
     const job = queue.shift();
-    const { to, login, motDePasse, role, nom, type = 'user', attemptsLeft = 5, backoffMs = 1000, appareil, reparationId } = job;
+    const { to, login, motDePasse, role, nom, type = 'user', attemptsLeft = 5, backoffMs = 1000, appareil, reparationId, numero, montantTotal, lien } = job;
     try {
       if (type === 'client') {
         await mailService.sendClientCreatedEmail({ to, login, motDePasse, nom });
       } else if (type === 'reparation_done') {
         await mailService.sendReparationDoneEmail({ to, nom, appareil, reparationId });
+      } else if (type === 'devis') {
+        await mailService.sendDevisEmail({ to, nom, numero, montantTotal, lien });
       } else {
         await mailService.sendUserCreatedEmail({ to, login, motDePasse, role });
       }

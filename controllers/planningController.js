@@ -1,4 +1,5 @@
 const { Planning, Demande, User } = require("../models");
+const auditService = require("../services/auditService");
 
 const includes = [
   Demande,
@@ -19,6 +20,15 @@ exports.create = async (req, res) => {
       technicienId:        req.body.technicienId,
       DemandeReparationId: demandeRef,
       responsableId:       req.body.responsableId
+    });
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "CREATE",
+      entity: "Planning",
+      entityId: data.id,
+      details: { description: data.description, technicienId: data.technicienId }
     });
 
     res.json(data);
@@ -83,6 +93,15 @@ exports.update = async (req, res) => {
       responsableId:       req.body.responsableId
     });
 
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "UPDATE",
+      entity: "Planning",
+      entityId: data.id,
+      details: { description: data.description, statut: data.statut }
+    });
+
     res.json(data);
   } catch (err) {
     res.status(500).json({ message: err.message, error: err });
@@ -118,6 +137,15 @@ exports.delete = async (req, res) => {
     if (!data) return res.status(404).json({ message: "Not found" });
 
     await data.destroy();
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "DELETE",
+      entity: "Planning",
+      entityId: req.params.id
+    });
+
     res.json({ message: "Deleted" });
   } catch (err) {
     res.status(500).json(err);

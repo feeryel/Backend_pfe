@@ -1,6 +1,7 @@
 const { User } = require("../models");
 const bcrypt    = require("bcrypt");
 const mailService = require("../services/mailService");
+const auditService = require("../services/auditService");
 
 // Rôles que l'admin peut créer — CLIENT est exclu (créé uniquement par RECEPTION)
 const CREATABLE_ROLES = ["admin", "technicien", "reception", "responsable_reparation", "achat_stock"];
@@ -37,6 +38,15 @@ exports.create = async (req, res) => {
         .then(()=>console.log(`Email de création envoyé à ${login} (fallback)`))
         .catch(e=>console.error('Erreur envoi email (fallback):', e));
     }
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "CREATE",
+      entity: "User",
+      entityId: user.id,
+      details: { login: user.login, role: user.role }
+    });
 
     res.status(201).json({
       id: user.id, login: user.login, role: user.role,
@@ -101,6 +111,16 @@ exports.update = async (req, res) => {
     delete updates.bannit;
 
     await user.update(updates);
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "UPDATE",
+      entity: "User",
+      entityId: user.id,
+      details: { login: user.login, role: user.role }
+    });
+
     res.json({ id: user.id, login: user.login, role: user.role });
   } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
@@ -115,6 +135,16 @@ exports.desactiver = async (req, res) => {
       return res.status(403).json({ message: "Impossible de désactiver un administrateur." });
     }
     await user.update({ actif: false });
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "UPDATE",
+      entity: "User",
+      entityId: user.id,
+      details: { login: user.login, actif: false }
+    });
+
     res.json({ message: `Compte de ${user.login} désactivé.`, id: user.id, actif: false });
   } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
@@ -126,6 +156,16 @@ exports.reactiver = async (req, res) => {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
     await user.update({ actif: true, bannit: false });
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "UPDATE",
+      entity: "User",
+      entityId: user.id,
+      details: { login: user.login, actif: true, bannit: false }
+    });
+
     res.json({ message: `Compte de ${user.login} réactivé.`, id: user.id, actif: true, bannit: false });
   } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
@@ -140,6 +180,16 @@ exports.bannir = async (req, res) => {
       return res.status(403).json({ message: "Impossible de bannir un administrateur." });
     }
     await user.update({ bannit: true, actif: false });
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "UPDATE",
+      entity: "User",
+      entityId: user.id,
+      details: { login: user.login, bannit: true, actif: false }
+    });
+
     res.json({ message: `Compte de ${user.login} banni.`, id: user.id, bannit: true, actif: false });
   } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });

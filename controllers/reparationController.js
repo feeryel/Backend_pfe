@@ -1,7 +1,9 @@
-const { Reparation, Demande, LigneReparation, Piece, Facture, User, Appareil, Client } = require("../models");
+const { Reparation, Demande, LigneReparation, Piece, Facture, User, Appareil, Client, Devis } = require("../models");
 const { notifyReparationDone } = require("../services/webhookService");
 const { addMailJob } = require("../services/mailQueue");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
+const notificationService = require("../services/notificationService");
+const auditService = require("../services/auditService");
 exports.create = async (req, res) => {
   try {
     const data = await Reparation.create({
@@ -17,6 +19,15 @@ exports.create = async (req, res) => {
         { where: { id: data.demandeId, etat: "En attente" } }
       );
     }
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "CREATE",
+      entity: "Reparation",
+      entityId: data.id,
+      details: { descriptionReparation: data.descriptionReparation, technicienId: data.technicienId }
+    });
 
     res.status(201).json(data);
   } catch (err) {
@@ -78,7 +89,8 @@ exports.getOne = async (req, res) => {
           model: LigneReparation,
           include: [Piece]
         },
-        Facture
+        Facture,
+        Devis
       ]
     });
 
@@ -102,7 +114,8 @@ const INCLUDE_FULL = [
   },
   { model: User, as: "technicien" },
   { model: LigneReparation, include: [Piece] },
-  Facture
+  Facture,
+  Devis
 ];
 
 exports.getAll = async (req, res) => {
@@ -137,6 +150,16 @@ exports.update = async (req, res) => {
     if (!data) return res.status(404).json({ message: "Not found" });
 
     await data.update(req.body);
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "UPDATE",
+      entity: "Reparation",
+      entityId: data.id,
+      details: req.body
+    });
+
     res.json(data);
   } catch (err) {
     res.status(500).json(err);
@@ -148,6 +171,10 @@ exports.updateStatus = async (req, res) => {
 
     if (!rep) {
       return res.status(404).json({ message: "Reparation not found" });
+    }
+
+    if (rep.status === "EN_ATTENTE_DEVIS") {
+      return res.status(403).json({ message: "Devis en attente de validation client" });
     }
 
     const previousStatus = rep.status;
@@ -162,7 +189,63 @@ exports.updateStatus = async (req, res) => {
       );
     }
 
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "STATUS_CHANGE",
+      entity: "Reparation",
+      entityId: rep.id,
+      details: { from: previousStatus, to: rep.status }
+    });
+
     res.json({ message: "Status updated", status: rep.status });
+
+// Génère automatiquement la facture lorsque la réparation passe à DONE
+if (rep.status === "DONE" && previousStatus !== "DONE") {
+  try {
+    const existingFacture = await Facture.findOne({ where: { ReparationId: rep.id } });
+
+    if (!existingFacture) {
+      const devisAccepte = await Devis.findOne({ where: { ReparationId: rep.id, statut: "ACCEPTE" } });
+
+      let montantHT, montantTVA, timbreFiscale, montantTotal;
+
+      if (devisAccepte) {
+        montantHT = devisAccepte.montantHT;
+        montantTVA = devisAccepte.montantTVA;
+        timbreFiscale = devisAccepte.timbreFiscale;
+        montantTotal = devisAccepte.montantTotal;
+      } else {
+        const lignes = await LigneReparation.findAll({ where: { ReparationId: rep.id } });
+        montantHT = lignes.reduce((sum, l) => sum + l.quantite * l.prixHT, 0);
+        montantTVA = montantHT * 0.19;
+        timbreFiscale = 1;
+        montantTotal = montantHT + montantTVA + timbreFiscale;
+      }
+
+      const facture = await Facture.create({
+        numero: `FAC-${new Date().getFullYear()}-${String(rep.id).padStart(4, "0")}`,
+        date: new Date(),
+        montantHT,
+        montantTVA,
+        timbreFiscale,
+        montantTotal,
+        ReparationId: rep.id
+      });
+
+      auditService.logAction({
+        userId: req.user.id,
+        userLogin: req.user.login,
+        action: "CREATE",
+        entity: "Facture",
+        entityId: facture.id,
+        details: { numero: facture.numero, montantTotal: facture.montantTotal, ReparationId: rep.id, auto: true }
+      });
+    }
+  } catch (err) {
+    console.error("[FACTURE AUTO-CREATE ERROR]", err);
+  }
+}
 
 if (rep.status === "DONE" && previousStatus !== "DONE") {
   console.log("[STATUS] DONE → webhook start");
@@ -204,6 +287,14 @@ if (rep.status === "DONE" && previousStatus !== "DONE") {
       console.warn("[WEBHOOK] Client not found");
       return;
     }
+
+    notificationService.notifyClient({
+      clientId: client.id,
+      type: "REPARATION_DONE",
+      title: "Réparation terminée",
+      message: `Votre réparation #${rep.id} est terminée. Vous pouvez venir récupérer votre appareil.`,
+      link: "/reparations"
+    });
 
     const email = client.email || user?.login;
 
@@ -271,6 +362,15 @@ exports.delete = async (req, res) => {
     if (!data) return res.status(404).json({ message: "Not found" });
 
     await data.destroy();
+
+    auditService.logAction({
+      userId: req.user.id,
+      userLogin: req.user.login,
+      action: "DELETE",
+      entity: "Reparation",
+      entityId: req.params.id
+    });
+
     res.json({ message: "Deleted" });
   } catch (err) {
     res.status(500).json(err);
@@ -304,7 +404,8 @@ exports.getByClientId = async (req, res) => {
         },
         { model: User, as: "technicien" },
         { model: LigneReparation, include: [Piece] },
-        Facture
+        Facture,
+        Devis
       ]
     });
 

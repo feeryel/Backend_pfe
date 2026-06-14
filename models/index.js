@@ -7,6 +7,9 @@ const Facture = require("./Facture");
 const Planning = require("./Planning");
 const User = require("./User");
 const LigneReparation = require("./LigneReparation");
+const Notification = require("./Notification");
+const AuditLog = require("./AuditLog");
+const Devis = require("./Devis");
 
 /* ================= RELATIONS ================= */
 
@@ -84,6 +87,14 @@ Planning.belongsTo(Demande, {
   foreignKey: "DemandeReparationId"
 });
 
+// Notifications
+User.hasMany(Notification, { foreignKey: "userId" });
+Notification.belongsTo(User, { foreignKey: "userId" });
+
+// Devis
+Reparation.hasOne(Devis, { foreignKey: "ReparationId" });
+Devis.belongsTo(Reparation, { foreignKey: "ReparationId" });
+
 module.exports = {
   Client,
   Appareil,
@@ -93,5 +104,8 @@ module.exports = {
   LigneReparation,
   Facture,
   Planning,
-  User
+  User,
+  Notification,
+  AuditLog,
+  Devis
 };
