@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const sequelize = require("./config/database");
@@ -30,6 +31,10 @@ app.use("/notifications",    require("./routes/notificationRoutes"));
 app.use("/admin/audit-logs", require("./routes/auditLogRoutes"));
 app.use("/devis",            require("./routes/devisRoutes"));
 app.use("/public/devis",     require("./routes/publicDevisRoutes"));
+app.use("/internal/video",   require("./routes/videoRoutes"));
+
+/* Vidéos générées (récap n8n) */
+app.use("/videos", express.static(path.join(__dirname, "public", "videos")));
 
 /* Test route */
 app.get("/", (req, res) => {

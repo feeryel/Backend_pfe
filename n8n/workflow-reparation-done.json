@@ -1,10 +1,10 @@
 {
-  "name": "TechDoctor — Notification Réparation DONE",
+  "name": "TechDoctor — Notification + Vidéo Récap (Réparation DONE)",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "reparation-done",
+        "path": "reparation-done-v2",
         "responseMode": "onReceived",
         "options": {}
       },
@@ -13,7 +13,7 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
       "position": [200, 300],
-      "webhookId": "techdoctor-reparation-done"
+      "webhookId": "techdoctor-reparation-done-v2"
     },
     {
       "parameters": {
@@ -71,6 +71,88 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [640, 440]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "assign-v1",  "name": "reparationId",   "value": "={{ $json.body.reparationId }}", "type": "string" },
+            { "id": "assign-v2",  "name": "clientNom",      "value": "={{ $json.body.clientNom }}", "type": "string" },
+            { "id": "assign-v3",  "name": "clientEmail",    "value": "={{ $json.body.clientEmail }}", "type": "string" },
+            { "id": "assign-v4",  "name": "appareil",       "value": "={{ $json.body.appareil }}", "type": "string" },
+            { "id": "assign-v5",  "name": "dateFinRep",     "value": "={{ $json.body.dateFinRep }}", "type": "string" },
+            { "id": "assign-v11", "name": "scriptPrompt",   "value": "={{ `Tu es l'assistant vocal de TechDoctor, un atelier de réparation d'appareils électroniques.\n\nRédige un texte court (entre 60 et 100 mots), en français, destiné à être lu à voix haute par une voix de synthèse, pour annoncer à un client que la réparation de son appareil est terminée.\n\nInformations à utiliser :\n- Nom du client : ${$json.body.clientNom}\n- Appareil réparé : ${$json.body.appareil}\n- Référence de la réparation : #${$json.body.reparationId}\n- Date de fin des travaux : ${$json.body.dateFinRep}\n\nConsignes strictes :\n- Ton chaleureux, rassurant et professionnel.\n- Texte brut uniquement : aucun emoji, aucun symbole, aucun markdown, aucun titre.\n- Commence par saluer le client par son nom.\n- Termine en l'invitant à venir récupérer son appareil à l'atelier et en le remerciant pour sa confiance.\n- N'invente aucune information autre que celles fournies ci-dessus.\n- Réponds uniquement avec le texte du message, sans aucune explication ni commentaire.` }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-5-prep-video",
+      "name": "Préparer Variables Vidéo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [640, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:11434/api/generate",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"model\": \"llama3.1:latest\", \"prompt\": $json.scriptPrompt, \"stream\": false } }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-6-ollama",
+      "name": "Ollama - Générer script",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 600]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const vars = $('Préparer Variables Vidéo').first().json;\nconst ollama = $input.first().json;\n\nlet text = (ollama.response || '').toString().trim();\n\nif (!text) {\n  text = `Bonjour ${vars.clientNom}, votre appareil ${vars.appareil} a ete repare avec succes. Vous pouvez venir le recuperer a notre atelier TechDoctor. Merci pour votre confiance.`;\n}\n\nreturn [{\n  json: {\n    ...vars,\n    videoText: text\n  }\n}];"
+      },
+      "id": "node-7-clean-text",
+      "name": "Nettoyer texte",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/internal/video/generate",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"reparationId\": $json.reparationId, \"videoText\": $json.videoText } }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "node-8-video-backend",
+      "name": "Générer Vidéo (Backend)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 600]
+    },
+    {
+      "parameters": {
+        "fromEmail": "ferydadi796@gmail.com",
+        "toEmail":   "={{ $('Nettoyer texte').item.json.clientEmail }}",
+        "subject":   "=🎬 Votre vidéo récap est prête — TechDoctor",
+        "emailType": "html",
+        "html":      "=<!DOCTYPE html><html lang=\"fr\"><head><meta charset=\"utf-8\"><title>TechDoctor</title></head><body style=\"margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\" style=\"padding:40px 16px;\"><table width=\"560\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12);\"><tr><td style=\"background:linear-gradient(135deg,#1d4ed8,#3b82f6);padding:36px;text-align:center;\"><h1 style=\"color:#fff;margin:0;font-size:28px;font-weight:800;\">🔧 TechDoctor</h1><p style=\"color:rgba(255,255,255,.80);margin:6px 0 0;font-size:13px;\">ATELIER DE RÉPARATION</p></td></tr><tr><td align=\"center\" style=\"padding:28px 32px 0;\"><span style=\"background:#ede9fe;border:2px solid #c4b5fd;border-radius:50px;padding:8px 24px;color:#5b21b6;font-weight:700;font-size:15px;\">🎬 Récap vidéo disponible</span></td></tr><tr><td style=\"padding:24px 32px 0;\"><p style=\"color:#1e293b;font-size:16px;margin:0 0 10px;\">Bonjour <strong>{{ $('Nettoyer texte').item.json.clientNom }}</strong>,</p><p style=\"color:#475569;font-size:14px;line-height:1.7;margin:0 0 20px;\">Voici un court récapitulatif vidéo et audio de votre réparation, généré spécialement pour vous.</p><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:10px;margin-bottom:20px;\"><tr><td style=\"padding:20px;\"><p style=\"color:#5b21b6;font-size:14px;margin:0 0 8px;\">📦 <strong>Appareil :</strong> {{ $('Nettoyer texte').item.json.appareil }}</p><p style=\"color:#5b21b6;font-size:14px;margin:0;border-top:1px solid #ddd6fe;padding-top:8px;\">🔢 <strong>Référence :</strong> #{{ $('Nettoyer texte').item.json.reparationId }}</p></td></tr></table><p style=\"text-align:center;margin:0 0 24px;\"><a href=\"{{ $json.videoUrl }}\" style=\"display:inline-block;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;\">▶ Voir ma vidéo récap</a></p><p style=\"color:#94a3b8;font-size:12px;text-align:center;margin:0 0 10px;\">Lien direct : {{ $json.videoUrl }}</p></td></tr><tr><td style=\"background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;\"><p style=\"color:#94a3b8;font-size:11px;margin:0;\">Email automatique — ne pas répondre · © 2025 TechDoctor</p></td></tr></table></td></tr></table></body></html>",
+        "options": {}
+      },
+      "id": "node-11-email-video",
+      "name": "Email Vidéo Prête",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1520, 600]
     }
   ],
   "connections": {
@@ -81,8 +163,31 @@
     },
     "Vérifier event": {
       "main": [
-        [{ "node": "Email au Client", "type": "main", "index": 0 }],
-        [{ "node": "Ignorer",         "type": "main", "index": 0 }]
+        [
+          { "node": "Email au Client", "type": "main", "index": 0 },
+          { "node": "Préparer Variables Vidéo", "type": "main", "index": 0 }
+        ],
+        [{ "node": "Ignorer", "type": "main", "index": 0 }]
+      ]
+    },
+    "Préparer Variables Vidéo": {
+      "main": [
+        [{ "node": "Ollama - Générer script", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ollama - Générer script": {
+      "main": [
+        [{ "node": "Nettoyer texte", "type": "main", "index": 0 }]
+      ]
+    },
+    "Nettoyer texte": {
+      "main": [
+        [{ "node": "Générer Vidéo (Backend)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Générer Vidéo (Backend)": {
+      "main": [
+        [{ "node": "Email Vidéo Prête", "type": "main", "index": 0 }]
       ]
     }
   },
@@ -92,5 +197,5 @@
     "saveManualExecutions": true
   },
   "staticData": null,
-  "tags": [{ "name": "TechDoctor" }]
+  "tags": [{ "name": "TechDoctor" }, { "name": "Vidéo IA" }]
 }

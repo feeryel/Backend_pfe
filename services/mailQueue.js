@@ -29,6 +29,8 @@ async function processNext() {
         await mailService.sendReparationDoneEmail({ to, nom, appareil, reparationId });
       } else if (type === 'devis') {
         await mailService.sendDevisEmail({ to, nom, numero, montantTotal, lien });
+      } else if (type === 'password_reset') {
+        await mailService.sendPasswordResetEmail({ to, login, motDePasse });
       } else {
         await mailService.sendUserCreatedEmail({ to, login, motDePasse, role });
       }
