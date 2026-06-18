@@ -300,6 +300,66 @@ exports.sendReparationDoneEmail = async ({ to, nom, appareil, reparationId }) =>
   });
 };
 
+exports.sendVideoReadyEmail = async ({ to, nom, appareil, reparationId, videoUrl }) => {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    throw new Error('SMTP non configuré.');
+  }
+
+  const appareilStr = appareil || 'votre appareil';
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1f2937;">
+      <div style="background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:14px 14px 0 0;padding:32px 28px;">
+        <h1 style="color:#fff;margin:0;font-size:22px;">Votre vidéo récap est prête 🎬</h1>
+        <p style="color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px;">TechDoctor — Service de réparation</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:0 0 14px 14px;padding:28px;">
+        <p style="margin:0 0 16px;">Bonjour <strong>${nom}</strong>,</p>
+        <p style="margin:0 0 20px;color:#374151;">
+          Voici un court récapitulatif vidéo et audio de la réparation de votre appareil
+          <strong>${appareilStr}</strong>, généré spécialement pour vous.
+        </p>
+
+        <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+          <table style="width:100%;border-collapse:collapse;font-size:14px;">
+            <tr>
+              <td style="padding:6px 0;color:#6b7280;width:130px;">Appareil</td>
+              <td style="padding:6px 0;font-weight:600;color:#1e1b4b;">${appareilStr}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#6b7280;">Référence</td>
+              <td style="padding:6px 0;font-weight:600;color:#1e1b4b;">#${reparationId}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align:center;margin-bottom:24px;">
+          <a href="${videoUrl}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;text-decoration:none;border-radius:10px;padding:12px 28px;font-weight:700;font-size:15px;">
+            ▶ Voir ma vidéo récap
+          </a>
+        </div>
+
+        <p style="font-size:12px;color:#9ca3af;margin:0;text-align:center;">
+          Lien direct : <a href="${videoUrl}" style="color:#7c3aed;">${videoUrl}</a>
+        </p>
+      </div>
+      <p style="text-align:center;font-size:11px;color:#d1d5db;margin-top:16px;">
+        TechDoctor — Service de réparation
+      </p>
+    </div>
+  `;
+
+  const text = `Bonjour ${nom},\n\nVotre vidéo récap de la réparation #${reparationId} (${appareilStr}) est prête.\n\nRegardez-la ici : ${videoUrl}\n\nCordialement,\nL'équipe TechDoctor`;
+
+  await transporter.sendMail({
+    from: fromAddress,
+    to,
+    subject: 'Votre vidéo récap de réparation est prête 🎬 – TechDoctor',
+    text,
+    html
+  });
+};
+
 exports.sendDevisEmail = async ({ to, nom, numero, montantTotal, lien }) => {
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     throw new Error('SMTP non configuré.');

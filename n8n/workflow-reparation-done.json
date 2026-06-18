@@ -1,5 +1,5 @@
 {
-  "name": "TechDoctor — Notification + Vidéo Récap (Réparation DONE)",
+  "name": "TechDoctor — Vidéo Récap (Réparation DONE)",
   "nodes": [
     {
       "parameters": {
@@ -43,21 +43,6 @@
     },
     {
       "parameters": {
-        "fromEmail": "ferydadi796@gmail.com",
-        "toEmail":   "={{ $json.body.clientEmail }}",
-        "subject":   "=✅ Votre réparation est prête — TechDoctor",
-        "emailType": "html",
-        "html":      "=<!DOCTYPE html><html lang=\"fr\"><head><meta charset=\"utf-8\"><title>TechDoctor</title></head><body style=\"margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\" style=\"padding:40px 16px;\"><table width=\"560\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12);\"><tr><td style=\"background:linear-gradient(135deg,#1d4ed8,#3b82f6);padding:36px;text-align:center;\"><h1 style=\"color:#fff;margin:0;font-size:28px;font-weight:800;\">🔧 TechDoctor</h1><p style=\"color:rgba(255,255,255,.80);margin:6px 0 0;font-size:13px;\">ATELIER DE RÉPARATION</p></td></tr><tr><td align=\"center\" style=\"padding:28px 32px 0;\"><span style=\"background:#d1fae5;border:2px solid #6ee7b7;border-radius:50px;padding:8px 24px;color:#065f46;font-weight:700;font-size:15px;\">✅ Réparation terminée</span></td></tr><tr><td style=\"padding:24px 32px 0;\"><p style=\"color:#1e293b;font-size:16px;margin:0 0 10px;\">Bonjour <strong>{{ $json.body.clientNom }}</strong>,</p><p style=\"color:#475569;font-size:14px;line-height:1.7;margin:0 0 20px;\">Votre appareil est réparé et <strong>prêt à être récupéré</strong> à notre atelier.</p><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;margin-bottom:20px;\"><tr><td style=\"padding:20px;\"><p style=\"color:#166534;font-size:14px;margin:0 0 8px;\">📦 <strong>Appareil :</strong> {{ $json.body.appareil }}</p><p style=\"color:#166534;font-size:14px;margin:0 0 8px;border-top:1px solid #bbf7d0;padding-top:8px;\">📅 <strong>Date de fin :</strong> {{ $json.body.dateFinRep }}</p><p style=\"color:#166534;font-size:14px;margin:0;border-top:1px solid #bbf7d0;padding-top:8px;\">🔢 <strong>Référence :</strong> #{{ $json.body.reparationId }}</p></td></tr></table><p style=\"color:#64748b;font-size:13px;border-left:3px solid #3b82f6;padding-left:10px;margin:0 0 24px;\">Pensez à présenter cet email lors de la récupération.</p></td></tr><tr><td style=\"background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;\"><p style=\"color:#94a3b8;font-size:11px;margin:0;\">Email automatique — ne pas répondre · © 2025 TechDoctor</p></td></tr></table></td></tr></table></body></html>",
-        "options": {}
-      },
-      "id": "node-3-email",
-      "name": "Email au Client",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [640, 160]
-    },
-    {
-      "parameters": {
         "assignments": {
           "assignments": [
             { "id": "assign-1", "name": "status", "value": "ignored", "type": "string" },
@@ -95,13 +80,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://localhost:11434/api/generate",
+        "url": "http://127.0.0.1:11434/api/generate",
         "sendBody": true,
         "contentType": "json",
         "specifyBody": "json",
-        "jsonBody": "={{ { \"model\": \"llama3.1:latest\", \"prompt\": $json.scriptPrompt, \"stream\": false } }}",
+        "jsonBody": "={{ { \"model\": \"llama3.1:latest\", \"prompt\": $json.scriptPrompt, \"stream\": false, \"keep_alive\": -1 } }}",
         "options": {
-          "timeout": 120000
+          "timeout": 300000
         }
       },
       "id": "node-6-ollama",
@@ -124,35 +109,20 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://localhost:3000/internal/video/generate",
+        "url": "http://127.0.0.1:3000/internal/video/generate",
         "sendBody": true,
         "contentType": "json",
         "specifyBody": "json",
-        "jsonBody": "={{ { \"reparationId\": $json.reparationId, \"videoText\": $json.videoText } }}",
+        "jsonBody": "={{ { \"reparationId\": $json.reparationId, \"videoText\": $json.videoText, \"clientEmail\": $json.clientEmail, \"clientNom\": $json.clientNom, \"appareil\": $json.appareil } }}",
         "options": {
           "timeout": 180000
         }
       },
       "id": "node-8-video-backend",
-      "name": "Générer Vidéo (Backend)",
+      "name": "Générer Vidéo + Email (Backend)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1300, 600]
-    },
-    {
-      "parameters": {
-        "fromEmail": "ferydadi796@gmail.com",
-        "toEmail":   "={{ $('Nettoyer texte').item.json.clientEmail }}",
-        "subject":   "=🎬 Votre vidéo récap est prête — TechDoctor",
-        "emailType": "html",
-        "html":      "=<!DOCTYPE html><html lang=\"fr\"><head><meta charset=\"utf-8\"><title>TechDoctor</title></head><body style=\"margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\" style=\"padding:40px 16px;\"><table width=\"560\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12);\"><tr><td style=\"background:linear-gradient(135deg,#1d4ed8,#3b82f6);padding:36px;text-align:center;\"><h1 style=\"color:#fff;margin:0;font-size:28px;font-weight:800;\">🔧 TechDoctor</h1><p style=\"color:rgba(255,255,255,.80);margin:6px 0 0;font-size:13px;\">ATELIER DE RÉPARATION</p></td></tr><tr><td align=\"center\" style=\"padding:28px 32px 0;\"><span style=\"background:#ede9fe;border:2px solid #c4b5fd;border-radius:50px;padding:8px 24px;color:#5b21b6;font-weight:700;font-size:15px;\">🎬 Récap vidéo disponible</span></td></tr><tr><td style=\"padding:24px 32px 0;\"><p style=\"color:#1e293b;font-size:16px;margin:0 0 10px;\">Bonjour <strong>{{ $('Nettoyer texte').item.json.clientNom }}</strong>,</p><p style=\"color:#475569;font-size:14px;line-height:1.7;margin:0 0 20px;\">Voici un court récapitulatif vidéo et audio de votre réparation, généré spécialement pour vous.</p><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:10px;margin-bottom:20px;\"><tr><td style=\"padding:20px;\"><p style=\"color:#5b21b6;font-size:14px;margin:0 0 8px;\">📦 <strong>Appareil :</strong> {{ $('Nettoyer texte').item.json.appareil }}</p><p style=\"color:#5b21b6;font-size:14px;margin:0;border-top:1px solid #ddd6fe;padding-top:8px;\">🔢 <strong>Référence :</strong> #{{ $('Nettoyer texte').item.json.reparationId }}</p></td></tr></table><p style=\"text-align:center;margin:0 0 24px;\"><a href=\"{{ $json.videoUrl }}\" style=\"display:inline-block;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;\">▶ Voir ma vidéo récap</a></p><p style=\"color:#94a3b8;font-size:12px;text-align:center;margin:0 0 10px;\">Lien direct : {{ $json.videoUrl }}</p></td></tr><tr><td style=\"background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;\"><p style=\"color:#94a3b8;font-size:11px;margin:0;\">Email automatique — ne pas répondre · © 2025 TechDoctor</p></td></tr></table></td></tr></table></body></html>",
-        "options": {}
-      },
-      "id": "node-11-email-video",
-      "name": "Email Vidéo Prête",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [1520, 600]
     }
   ],
   "connections": {
@@ -163,10 +133,7 @@
     },
     "Vérifier event": {
       "main": [
-        [
-          { "node": "Email au Client", "type": "main", "index": 0 },
-          { "node": "Préparer Variables Vidéo", "type": "main", "index": 0 }
-        ],
+        [{ "node": "Préparer Variables Vidéo", "type": "main", "index": 0 }],
         [{ "node": "Ignorer", "type": "main", "index": 0 }]
       ]
     },
@@ -182,12 +149,7 @@
     },
     "Nettoyer texte": {
       "main": [
-        [{ "node": "Générer Vidéo (Backend)", "type": "main", "index": 0 }]
-      ]
-    },
-    "Générer Vidéo (Backend)": {
-      "main": [
-        [{ "node": "Email Vidéo Prête", "type": "main", "index": 0 }]
+        [{ "node": "Générer Vidéo + Email (Backend)", "type": "main", "index": 0 }]
       ]
     }
   },
