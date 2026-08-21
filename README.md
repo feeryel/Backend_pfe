@@ -377,8 +377,9 @@ https://portfolio-feryel.vercel.app
 🐙 GitHub:
 https://github.com/feeryel
 
-💼 LinkedIn:
+💼 Linkedin:
 https://www.linkedin.com/in/feeryel-dadi
+
 ---
 
 ## 📄 License
